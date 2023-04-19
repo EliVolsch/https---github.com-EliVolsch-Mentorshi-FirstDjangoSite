@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>3D Windmills in the Karoo</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="initial-scale=1.0,maxumim-scale=1,user-scalable=no">
+    <script src="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.css" rel="stylesheet" />
+    <style>
+        body { margin: 0; padding: 10px; }
+        #map { position: absolute; top: 0; bottom: 0; width: 99%; }
+    </style>
+
+</head>
+<body>
+    <script src="https://unpkg.com/babylonjs@5.42.2/babylon.js"></script>
+    <script src="https://unpkg.com/babylonjs-loaders@5.42.2/babylonjs.loaders.min.js"></script>
+    <div id="map"></div>
+    <script>
+        var BABYLON = window.BABYLON;
+
+        var map = (window.map = new maplibregl.Map({
+            container: 'map',
+            style: "https://api.maptiler.com/maps/basic/style.json?key=3k2ZAx59NO9FMIGBUi8W",
+            zoom: 18,
+            center: [20.63006889271178, -32.88102528939515],//28.451686, -26.29935   old one:148.9819, -35.3981
+            pitch: 60,
+            antialias: true //---->
+        }))
+
+        //----> world martix parameters
+        
+        function addWindTurbine(lat, lon, nommer) {
+            var costomlayer = {};
+            var worldOrigin = [lat, lon] //---> Should be the same as  above where map centre is
+        var worldAltitude = 0; //---> not sure what this does
+
+        var worldRotate = [Math.PI / 2, 0, 0];
+        var worldOriginMercator = maplibregl.MercatorCoordinate.fromLngLat(
+            worldOrigin,
+            worldAltitude
+        );
+        const worldScale = worldOriginMercator.meterInMercatorCoordinateUnits();
+
+        var worldMatrix = BABYLON.Matrix.Compose(
+            new BABYLON.Vector3(worldScale, worldScale, worldScale),
+            BABYLON.Quaternion.FromEulerAngles(
+                worldRotate[0],
+                worldRotate[1],
+                worldRotate[2]
+            ),
+            new BABYLON.Vector3(
+                worldOriginMercator.x,
+                worldOriginMercator.y,
+                worldOriginMercator.z
+            )
+        );
+            return costomlayer =
+            //costom layer configuration
+             {
+                id: nommer,
+                type: 'custom',
+                renderingMode: '3d',
+                onAdd: function (map, gl) {
+                    this.engine = new BABYLON.Engine(
+                        gl,
+                        true,
+                       {
+                           useHighPrecisionMatrix: true
+                        },
+                        true
+                  );
+                 this.scene = new BABYLON.Scene(this.engine);
+                 this.scene.autoClear = false;
+                 this.scene.detachControl();
+                 this.scene.beforeRender = () => {
+                      this.engine.wipeCaches(true);
+                 };
+
+                  // Camera creation
+                  this.camera = new BABYLON.Camera(
+                      'Camera',
+                      new BABYLON.Vector3(0, 0, 0),
+                      this.scene
+                 );
+
+                 //Creating a light
+                 const light = new BABYLON.HemisphericLight(
+                      'light1',
+                      new BABYLON.Vector3(0, 0, 100),
+                     this.scene
+                 );
+                  light.Intensity = 0.7;
+
+                   //add debug axes viewer
+                 new BABYLON.AxesViewer(this.scene, 10);
+
+                    //Load 3d model GLTF
+                    BABYLON.SceneLoader.LoadAssetContainerAsync (
+                        'https://raw.githubusercontent.com/voogt/001/main/scene.gltf',
+                        '',
+                        this.scene
+                    ).then((modelContainer) => {
+                        modelContainer.addAllToScene();
+
+                        const rootMesh = modelContainer.createRootMesh();
+
+                        // might want to load the others this way
+                        // create second mesh
+                        // const rootMesh2 = rootMesh.clone();
+                        // position of second mesh relative to the first
+                        // rootMesh2.position.x =25 // +east, meters
+                        // rootMesh2.position.y =25 // +north, meters 
+                    });
+
+                    this.map = map;
+                },
+                render: function (gl, matrix) {
+                    const cameraMatrix = BABYLON.Matrix.FromArray(matrix);
+                    const wvpMatrix = worldMatrix.multiply(cameraMatrix);
+
+                    this.camera.freezeProjectionMatrix(wvpMatrix);
+
+                    this.scene.render(false);
+                    this.map.triggerRepaint();
+                }
+            };
+        }
+        //Loop function here... or GeoJason   I entred the values manually because im stil looking for a function which can open json files
+        //add array of the winfmills att at leas 4 ---->
+        var windArr = [//key value pair                                                ///
+            {"lat":20.63006889271178, "lon":-32.88102528939515},//0
+            {"lat":20.63319576655175, "lon":-32.88118504286821},//1
+            {"lat":20.63684237307507, "lon":-32.88117346863787},//2
+            {"lat":20.64214416880389, "lon":-32.8808809958856},//3
+            {"lat":20.64399207320827, "lon":-32.87895379266348},//4
+            {"lat":20.64495227414643, "lon":-32.87606919600334},//5
+            {"lat":20.59516862619699, "lon":-32.86187775179228},//6
+            {"lat":20.59816090630103, "lon":-32.86072704594473},//7
+            {"lat":20.60101933455758, "lon":-32.85902524872138},//8
+            {"lat":20.60525221887948, "lon":-32.84829302299653},//9
+            {"lat":20.60851937066171, "lon":-32.84692811499608},//10
+            {"lat":20.61291434296368, "lon":-32.83995265724234},//11
+            {"lat":20.6138349443642, "lon":-32.83737279528204},//12
+            {"lat":20.61525365177063, "lon":-32.83503252364783},//13
+            {"lat":20.61585105268245, "lon":-32.83235463110918},//14
+            {"lat":20.61703425180205, "lon":-32.82996162771573},//15
+            {"lat":20.61819248954672, "lon":-32.82763583145697},//16
+            {"lat":20.61912459292217, "lon":-32.81998326618028},//17
+            {"lat":20.61822781919537, "lon":-32.81672623940937},//18
+            {"lat":20.61709121221865, "lon":-32.81335316735762},//19
+            {"lat":20.61824117484947, "lon":-32.80821694896772},//20
+            {"lat":20.61928753667018, "lon":-32.80456594482852},//21
+            {"lat":20.61947479140644, "lon":-32.80181234903218},//22
+            {"lat":20.62159015118216, "lon":-32.80015334532191},//23
+            {"lat":20.62475299204284, "lon":-32.79887618383},//24
+            {"lat":20.62859200050069, "lon":-32.79781637917174},//25
+            {"lat":20.63269097019377, "lon":-32.79724748130807},//26
+            {"lat":20.637596880706526, "lon":-32.79495716287957},//27
+            {"lat":20.64155261022559, "lon":-32.79459075201333},//28
+            {"lat":20.64413509980206, "lon":-32.79314656550226},//29
+            {"lat":20.64605402002412, "lon":-32.79138390319085},//30
+            {"lat":20.63329722731104, "lon":-32.78939236813961},//31
+            {"lat":20.62855405062722, "lon":-32.78279168091725},//32
+            {"lat":20.63072380570863, "lon":-32.78084833256647}//32
+        ]
+
+        /// add the lat long of th 35 in the list, change origin... .then enjpy
+        
+        map.add
+
+        map.on('style.load', function () {
+            for (var i = 0; i < windArr.length; i++){
+            map.addLayer(addWindTurbine(windArr[i]["lat"], windArr[i]["lon"], '3d-model_' + i)); //call function while passing in lat and lon from looping javascript array
+        }            
+        });
+    </script>
+</body>
+</html>
